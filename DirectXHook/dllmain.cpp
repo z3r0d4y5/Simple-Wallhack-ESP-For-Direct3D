@@ -4,7 +4,7 @@
 #include <d3dx9.h>
 #include <stdio.h>
 
-typedef HRESULT(WINAPI* f_EndScene)(IDirect3DDevice9 * pDevice);
+typedef HRESULT(WINAPI* f_EndScene)(IDirect3DDevice9* pDevice);
 typedef HRESULT(WINAPI* f_DrawIndexedPrimitive)(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE PrimType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount);
 
 f_EndScene oEndScene;
@@ -63,6 +63,22 @@ bool WorldToScreen(LPDIRECT3DDEVICE9 pDevice, D3DXVECTOR3* pos, D3DXVECTOR3* out
 	return false;
 }
 
+HRESULT WINAPI Hooked_EndScene_Light(IDirect3DDevice9* pDevice)
+{
+	D3DLIGHT9 light;
+	ZeroMemory(&light, sizeof(light));
+	light.Type = D3DLIGHT_DIRECTIONAL;
+	light.Diffuse = D3DXCOLOR(0.5f, 0.5f, 0.5f, 1.0f);
+	light.Direction = D3DXVECTOR3(-1.0f, -0.5f, -1.0f);
+
+	pDevice->SetLight(0, &light);
+	pDevice->LightEnable(0, TRUE);
+
+	//pDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(100, 100, 100));
+
+	return oEndScene(pDevice);
+}
+
 HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* pDevice)
 {
 	static ID3DXFont* pFont = nullptr;
@@ -80,7 +96,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* pDevice)
 		DXFont_DESC.OutputPrecision = OUT_DEFAULT_PRECIS;
 		DXFont_DESC.Quality = DEFAULT_QUALITY;
 		DXFont_DESC.PitchAndFamily = DEFAULT_PITCH;
-		DXFont_DESC.FaceName, TEXT("µ¸¿òÃ¼");
+		DXFont_DESC.FaceName, TEXT("ÂµÂ¸Â¿Ã²ÃƒÂ¼");
 
 		D3DXCreateFontIndirect(pDevice, &DXFont_DESC, &pFont);
 	}
@@ -109,6 +125,17 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* pDevice)
 			pFont->DrawTextA(0, buf, -1, &gogooma_rt, DT_LEFT | DT_TOP, D3DCOLOR_ARGB(255, 255, 0, 0));
 		}
 	}
+
+	D3DLIGHT9 light;
+	ZeroMemory(&light, sizeof(light));
+	light.Type = D3DLIGHT_DIRECTIONAL;
+	light.Diffuse = D3DXCOLOR(0.5f, 0.5f, 0.5f, 1.0f);
+	light.Direction = D3DXVECTOR3(-1.0f, -0.5f, -1.0f);
+
+	pDevice->SetLight(0, &light);
+	pDevice->LightEnable(0, TRUE);
+
+	//pDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(100, 100, 100));
 
 	return oEndScene(pDevice);
 }
@@ -156,6 +183,7 @@ DWORD WINAPI MainThread(LPVOID param)
 {
 	getD3DDevice();
 
+	//oEndScene = (f_EndScene)DetourFunction((PBYTE)getVF((DWORD)pD3DDevice, 42), (PBYTE)Hooked_EndScene_Light);
 	oEndScene = (f_EndScene)DetourFunction((PBYTE)getVF((DWORD)pD3DDevice, 42), (PBYTE)Hooked_EndScene);
 	oDrawIndexedPrimitive = (f_DrawIndexedPrimitive)DetourFunction((PBYTE)getVF((DWORD)pD3DDevice, 82), (PBYTE)Hooked_DrawIndexedPrimitive);
 
